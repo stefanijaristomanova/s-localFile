@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:workday="http://www.mulesoft.org/schema/mule/workday" xmlns:validation="http://www.mulesoft.org/schema/mule/validation"
+	xmlns:os="http://www.mulesoft.org/schema/mule/os"
+	xmlns:json="http://www.mulesoft.org/schema/mule/json" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:file="http://www.mulesoft.org/schema/mule/file" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/json http://www.mulesoft.org/schema/mule/json/current/mule-json.xsd
+http://www.mulesoft.org/schema/mule/os http://www.mulesoft.org/schema/mule/os/current/mule-os.xsd
+http://www.mulesoft.org/schema/mule/validation http://www.mulesoft.org/schema/mule/validation/current/mule-validation.xsd
+http://www.mulesoft.org/schema/mule/workday http://www.mulesoft.org/schema/mule/workday/current/mule-workday.xsd">
+	<file:config name="File_Config" doc:name="File Config" doc:id="2c11ce05-a5f6-4988-b709-1a189f712f2b" >
+		<file:connection workingDir="C:\Users\Igor Stojkoski\Desktop\valionDoc" />
+	</file:config>
+	<os:object-store name="Object_store" doc:name="Object store" doc:id="1d62cbeb-d9cc-455f-b8cc-f0a962c6551e" entryTtlUnit="MILLISECONDS" expirationInterval="30" expirationIntervalUnit="DAYS" />
+	<configuration-properties doc:name="Configuration properties" doc:id="d6df5ea7-a050-4427-b04a-29d2a95eff22" file="config.yaml" />
+	<flow name="readDataFromCSV" doc:id="3ace3105-4b3b-4321-bd0c-24f2e19822e2" >
+		<file:read doc:name="csv file" doc:id="fe819e42-b061-43d4-9bee-fc85fde2793e" path="C:\Users\Igor Stojkoski\Desktop\valionDoc\readFile\localData2.csv" config-ref="File_Config" outputMimeType='application/csv; header=false; separator=";,"' />
+		<ee:transform doc:name="csv to json" doc:id="1fb05a2d-555f-491c-b26b-4baec42512f1" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload map{
+	userId : $.column_0,
+	name : $.column_1,
+	firstName : $.column_2,
+	email : $.column_3
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<json:validate-schema doc:name="Validate json schema" doc:id="26eba9a8-987f-4984-91c5-bdc8c0aba934" schema="examples/exampleJson.json" />
+		<file:move doc:name="to processed" doc:id="b751d816-ecab-4da3-bf3e-6621a50162b6" config-ref="File_Config" sourcePath="#[attributes.path]" targetPath="C:\Users\Igor Stojkoski\Desktop\valionDoc\processed" />
+		<error-handler>
+			<on-error-propagate enableNotifications="true" logException="true" doc:name="On Error Propagate" doc:id="bb38ac1a-7c20-4fc5-a637-b4ffa2334c08" >
+				<file:move doc:name="to error" doc:id="5a69f3af-faa6-45c8-8cc5-f9ce66657628" config-ref="File_Config" sourcePath="#[attributes.path]" targetPath="C:\Users\Igor Stojkoski\Desktop\valionDoc\error"/>
+			</on-error-propagate>
+		</error-handler>
+	</flow>
+	<flow name="housekeepingLocalFile" doc:id="7a95f07f-4a65-4136-8216-8bcfe75a69fd" initialState="stopped">
+		<scheduler doc:name="0 0 12 1 1/1 ? * | 1 month " doc:id="bec28487-1af9-4f91-93fb-c3239661202d" >
+			<scheduling-strategy >
+				<cron expression="0 0/1 * 1/1 * ? *" />
+			</scheduling-strategy>
+		</scheduler>
+		<logger level="INFO" doc:name="HouseKeeping Started" doc:id="55a4f66b-53a7-4f69-966d-9ca0b81d8069" message='#["HouseKeeping Started"]'/>
+		<set-variable value='#[(now() - ("PT$(1)M" as Period)) as LocalDateTime]' doc:name="Set Current Timestamp" doc:id="07725add-042b-4898-a19f-4d826ab36d41" variableName="varDeleteTimestamp"/>
+		<file:list doc:name="all files in /processed directory" doc:id="9d20493a-0422-4af3-a8ef-68258ec2cd29" directoryPath="C:\Users\Igor Stojkoski\Desktop\valionDoc\processed" recursive="true" config-ref="File_Config">
+			<file:matcher createdUntil='#[(now() - ("PT$(1)M" as Period)) as LocalDateTime]'/>
+		</file:list>
+		<choice doc:name="Choice" doc:id="e44582f2-8d9c-42fe-8c01-6e8ad1fb7c03" >
+			<when expression="#[if(isEmpty(payload)) false else if (sizeOf(payload) &gt; 0) true else false]">
+				<parallel-foreach doc:name="Parallel For Each" doc:id="08aa6ef0-f7fa-4d6c-beba-50e96cc214c1" >
+					<file:delete doc:name="old file" doc:id="d319eee0-a006-46bb-a626-f68370baab17" path="#[payload.attributes.path]" config-ref="File_Config"/>
+					<logger level="INFO" doc:name="deleted status" doc:id="0d6d8a3c-c67f-4013-bf72-35177f7526da" message='#[payload.attributes.path ++ " was deleted"]'/>
+				</parallel-foreach>
+			</when>
+			<otherwise >
+				<logger level="INFO" doc:name="default status" doc:id="a4828079-0321-49f2-bda3-d11e08bd90e6" message='#["No files found"]'/>
+			</otherwise>
+		</choice>
+		<logger level="INFO" doc:name="Housekeeping ended" doc:id="441078c4-05f4-4242-b909-4787e167f44b" message="Housekeeping ended"/>
+	</flow>
+</mule>

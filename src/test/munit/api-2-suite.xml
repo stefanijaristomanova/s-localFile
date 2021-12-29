@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:munit="http://www.mulesoft.org/schema/mule/munit" xmlns:munit-tools="http://www.mulesoft.org/schema/mule/munit-tools"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xsi:schemaLocation="
+		http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+		http://www.mulesoft.org/schema/mule/munit http://www.mulesoft.org/schema/mule/munit/current/mule-munit.xsd
+		http://www.mulesoft.org/schema/mule/munit-tools  http://www.mulesoft.org/schema/mule/munit-tools/current/mule-munit-tools.xsd">
+	<munit:config name="api-2-suite.xml" />
+	<munit:test name="api-2Flow-test" doc:id="0d94ff24-ba2f-474e-bb3c-8554b8018d24" >
+		<munit:behavior >
+			<munit-tools:mock-when doc:name="Mock Validate_json_schema" doc:id="5584c346-4689-4201-b57e-3834a20e0329" processor="json:validate-schema">
+				<munit-tools:with-attributes >
+					<munit-tools:with-attribute whereValue="26eba9a8-987f-4984-91c5-bdc8c0aba934" attributeName="doc:id" />
+				</munit-tools:with-attributes>
+				<munit-tools:then-return >
+					<munit-tools:payload value="#[output application/json --- readUrl('classpath://api2Flowtest\mock_payload.dwl')]" mediaType="application/json" encoding="UTF-8" />
+					<munit-tools:attributes value="#[readUrl('classpath://api2Flowtest\mock_attributes.dwl')]" />
+				</munit-tools:then-return>
+			</munit-tools:mock-when>
+			<munit-tools:spy doc:name="Spy Move_to_process" doc:id="d1a1d90d-0768-49a3-9b7c-a764481b540b" processor="file:move">
+				<munit-tools:with-attributes >
+					<munit-tools:with-attribute whereValue="b751d816-ecab-4da3-bf3e-6621a50162b6" attributeName="doc:id" />
+				</munit-tools:with-attributes>
+				<munit-tools:before-call >
+					<munit-tools:assert doc:name="Assert payload" doc:id="0c715927-9ab5-412f-bd8b-bba4c4f7c917" message="The payload does not match">
+						<munit-tools:that ><![CDATA[#[%dw 2.0
+import api2Flowtest::spy_assert_payload
+---
+spy_assert_payload::main({payload: payload, attributes: attributes, vars: vars})]]]></munit-tools:that>
+					</munit-tools:assert>
+				</munit-tools:before-call>
+				<munit-tools:after-call >
+					<munit-tools:assert doc:name="Assert payload" doc:id="372e565f-8d47-4a45-ad9a-f30cc0a470bf" message="The payload does not match">
+						<munit-tools:that ><![CDATA[#[%dw 2.0
+import api2Flowtest::spy_assert_payload1
+---
+spy_assert_payload1::main({payload: payload, attributes: attributes, vars: vars})]]]></munit-tools:that>
+					</munit-tools:assert>
+				</munit-tools:after-call>
+			</munit-tools:spy>
+			<munit:set-event doc:name="Set Input" doc:id="ec7bbead-7a59-43d0-bcd9-446ba00e9f35" >
+				<munit:attributes value="#[readUrl('classpath://api2Flowtest\set-event_attributes.dwl')]" />
+			</munit:set-event>
+		</munit:behavior>
+		<munit:execution >
+			<flow-ref doc:name="Flow-ref to api-2Flow" doc:id="b5832b37-5d9a-4229-8251-93b2bacf0593" name="api-2Flow"/>
+		</munit:execution>
+		<munit:validation >
+			<munit-tools:assert doc:name="Assert payload" doc:id="bf6be298-4ebf-40e5-833d-ea4d7920342d" message="The payload does not match">
+				<munit-tools:that ><![CDATA[#[%dw 2.0
+import api2Flowtest::assert_expression_payload
+---
+assert_expression_payload::main({payload: payload, attributes: attributes, vars: vars})]]]></munit-tools:that>
+			</munit-tools:assert>
+			<munit-tools:verify-call doc:name="Verify Read_csv" doc:id="4807b566-dbc0-4e9f-a826-35d7bc97b209" processor="file:read" times="1">
+				<munit-tools:with-attributes >
+					<munit-tools:with-attribute whereValue="fe819e42-b061-43d4-9bee-fc85fde2793e" attributeName="doc:id" />
+				</munit-tools:with-attributes>
+			</munit-tools:verify-call>
+			<munit-tools:verify-call doc:name="Verify Transform Message" doc:id="7c04da39-1ea2-40b2-96c4-3f33493989f1" processor="ee:transform" times="1">
+				<munit-tools:with-attributes >
+					<munit-tools:with-attribute whereValue="1fb05a2d-555f-491c-b26b-4baec42512f1" attributeName="doc:id" />
+				</munit-tools:with-attributes>
+			</munit-tools:verify-call>
+			<munit-tools:verify-call doc:name="Verify Move_to_process" doc:id="b629f123-223f-4a5e-8e8a-8c2d2bbfd822" processor="file:move" times="1">
+				<munit-tools:with-attributes >
+					<munit-tools:with-attribute whereValue="b751d816-ecab-4da3-bf3e-6621a50162b6" attributeName="doc:id" />
+				</munit-tools:with-attributes>
+			</munit-tools:verify-call>
+		</munit:validation>
+	</munit:test>
+
+
+</mule>

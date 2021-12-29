@@ -1,0 +1,10 @@
+api:
+  name: "s-localFile"
+  client_id: "c47b595d20b3432c96a9128bde4c3dcd"
+  client_secret: ""
+https:  
+# host : "localhost"
+  port : "8083"
+  path : "localUsers"
+file: 
+  deleteFile : "1"
